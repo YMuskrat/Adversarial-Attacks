@@ -3,43 +3,31 @@ import numpy as np
 from tensorflow.keras.applications import resnet50
 import pathlib
 import os
-from src.utils.preprocessing import getImage
+from src.utils.preprocessing import getImage, get_imagenet_label
 
 class Model():
-    def __init__(self):
-        self.model = tf.keras.applications.MobileNetV2(include_top=True,
+    def __init__(self,model):
+        if model == 'mobileV2':
+            #model initialization mobileV2
+            self.model = tf.keras.applications.MobileNetV2(include_top=True,
                                                        weights='imagenet')
+            self.decode_predictions = tf.keras.applications.mobilenet_v2.decode_predictions
+        elif model == 'resnet200':
+            #Model initalization resnet200
+            self.model=tf.keras.applications.resnet_rs.ResNetRS200(
+                include_top=True,
+                weights='imagenet',
+                classes=1000,
+                input_shape=None,
+                input_tensor=None,
+                pooling=None,
+                classifier_activation='softmax',
+                include_preprocessing=True)
+            self.decode_predictions = tf.keras.applications.resnet_rs.decode_predictions
         self.model.trainable = False
         self.loss_object = tf.keras.losses.CategoricalCrossentropy()
-        self.decode_predictions = tf.keras.applications.mobilenet_v2.decode_predictions
-    
-    def quantization(self, quant_type):
-        """
-        quantization of the model
-
-        :param converter: convert the model to lite mode using tensorflow
-
-        :param converter.optimizations: Convert the model to 16 bit precision
-        :param self.interpreter: load the model saved
-
-        """
-        converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
-
-        # Set the optimization mode
-        converter.optimizations = [tf.lite.Optimize.DEFAULT]
-
-        # Set float16 is the supported type on the target platform
-        if quant_type == "16 bit":
-          converter.target_spec.supported_types = [tf.float16]
-
-        # Convert and Save the model
-        tflite_model = converter.convert()
-        open("converted_model.tflite", "wb").write(tflite_model)
-        self.interpreter = tf.lite.Interpreter(
-            model_path="converted_model.tflite")
-        self.interpreter.allocate_tensors()
-    
-    def predict(self, image, quantisation=False):
+        
+    def predict(self, image, quantisation=False,quantisation_type=None):
         """
         predict the image
 
@@ -56,6 +44,7 @@ class Model():
           self.image_probs = self.model.predict(image)
           image_reference=image
         else:
+          self.interpreter = self.load_quantised_model_tensors(quantisation_type)
           input_index = self.interpreter.get_input_details()[0]["index"]
           output_index = self.interpreter.get_output_details()[0]["index"]
           self.interpreter.set_tensor(input_index, image)
@@ -63,14 +52,19 @@ class Model():
           self.image_probs = self.interpreter.get_tensor(output_index)
           image_reference = self.image1
 
-        _, image_class, class_confidence = self.get_imagenet_label(
-            self.image_probs)
+        _, image_class, class_confidence = get_imagenet_label(
+            self.image_probs, self.decode_predictions)
         return image_reference, image_class, class_confidence
 
-
-    def get_imagenet_label(self,probs):
-        """
-            : return decode the predictions and take the first probable label
-            """
-        return self.decode_predictions(probs, top=1)[0][0]
+    def load_quantised_model_tensors(self, quantisation_type):
+        if quantisation_type== "16-bit":
+            tf_path = "converted_model_16.tflite"
+        else:
+            tf_path = "converted_model_8.tflite"
+        interpreter = tf.lite.Interpreter(
+            model_path=tf_path)
+        interpreter.allocate_tensors()
+        return interpreter
+    
+    
         
