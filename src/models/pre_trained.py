@@ -39,8 +39,9 @@ class Model():
         :return: plot the image with the corresponding prediction
         """
   
-        image = getImage(image,quantisation)
+        
         if not quantisation:
+          image = getImage(image, quantisation)
           self.image_probs = self.model.predict(image)
           image_reference=image
         else:
@@ -50,17 +51,17 @@ class Model():
           self.interpreter.set_tensor(input_index, image)
           self.interpreter.invoke()
           self.image_probs = self.interpreter.get_tensor(output_index)
-          image_reference = self.image1
+          image_reference = image
 
         _, image_class, class_confidence = get_imagenet_label(
             self.image_probs, self.decode_predictions)
         return image_reference, image_class, class_confidence
 
     def load_quantised_model_tensors(self, quantisation_type):
-        if quantisation_type== "16-bit":
-            tf_path = "converted_model_16.tflite"
+        if quantisation_type== "16 bit":
+            tf_path = r"C:\Users\yassi\OneDrive\Desktop\Adversarial_Attacks\converted_model_16.tflite"
         else:
-            tf_path = "converted_model_8.tflite"
+            tf_path = r"C:\Users\yassi\OneDrive\Desktop\Adversarial_Attacks\converted_model_8.tflite"
         interpreter = tf.lite.Interpreter(
             model_path=tf_path)
         interpreter.allocate_tensors()

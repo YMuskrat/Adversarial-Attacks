@@ -6,14 +6,13 @@ from src.models.pre_trained import Model
 
 class ImageHandler():
     def __init__(self):
-        self.count=0
         self.image_list=[]
         self.description_list=[]
         self.label_list=[]
         self.confidence_list = []
         self.pertubation_list = []
 
-    def display_images(self,model, image, description, eps, quantization, perturbations, image2,decode_predictions,quantisation=False):
+    def display_images(self,model_name, adv_x, image, eps, perturbations, description, decode_predictions,quantisation=False):
 
         """
             Helper function to display the images along with their corresponding adversarial attack pertubations
@@ -23,39 +22,20 @@ class ImageHandler():
 
             return: plot showing the pertubation as well as the image
         """
-
+        initialize_model=Model(model_name)
+        pre_trained_model = initialize_model.model
         if quantisation == '32 bit':
-
-            _, label, confidence = get_imagenet_label(model.predict(image), decode_predictions)
-            r_image = image + eps*perturbations
-            
-
-            
-        else:
-            if quantisation == '16 bit':
-                interpreter = tf.lite.Interpreter(
-                    model_path=r"C:\Users\yassi\OneDrive\Desktop\Adversarial_Attacks\converted_model_16.tflite")
-                interpreter.allocate_tensors()
-            elif quantisation == '8 bit':
-                interpreter = tf.lite.Interpreter(
-                    model_path=r"C:\Users\yassi\OneDrive\Desktop\Adversarial_Attacks\converted_model_8.tflite")
-                interpreter.allocate_tensors()
-
-            
-            input_index = interpreter.get_input_details()[0]["index"]
-            output_index = interpreter.get_output_details()[0]["index"]
-            interpreter.set_tensor(input_index, image)
-            interpreter.invoke()
-            r_image = image2 + eps*perturbations  # easy fix for now
-            _, label, confidence = get_imagenet_label(
-                interpreter.get_tensor(output_index), decode_predictions)
-
-        self.image_list.append(r_image[0])
+            _, label, confidence = get_imagenet_label(pre_trained_model.predict(adv_x), decode_predictions)
+        elif quantisation == '16 bit':
+            _, label, confidence = initialize_model.predict(adv_x, True,quantisation)
+        elif quantisation == '8 bit':
+            _, label, confidence = initialize_model.predict(adv_x, True, quantisation)
+        self.image_list.append(adv_x[0])
         self.description_list.append(description)
         self.label_list.append(label)
         self.confidence_list.append(confidence)
-        self.pertubation_list.append(eps*perturbations[0])
-        return self.image_list, self.description_list, self.label_list,self.confidence_list,self.pertubation_list,self.count
+        self.pertubation_list.append(perturbations)
+        return self.image_list, self.description_list, self.label_list,self.confidence_list,self.pertubation_list
 
 
     def visualize(self,image, image_class, class_confidence):
@@ -82,32 +62,43 @@ class ImageHandler():
         plt.show(astype('uint8'))
 
 
-    def image_drawer(self,image,description,label,confidence,pertubations): #image1,description1,label1,confidence1,pertubations1
-        for im,des,lbl,conf,pertbs in zip(image,description,label,confidence,pertubations): #,image1,description1,label1,confidence1,pertubations1 #,im1,des1,lbl1,conf1,pertbs1
-            im = tf.image.flip_up_down(im)
-            #im1 = tf.image.flip_up_down(im1)
+    def image_drawer(self,image_32,description_32,label,confidence_32,pertubations_32,
+                     image_16, description_16, label_16, confidence_16,
+                     image_8, description_8, label_8, confidence_8): 
 
+        zipped_results = zip(image_32, description_32, label, confidence_32, pertubations_32,
+                        image_16, description_16, label_16, confidence_16,
+                        image_8, description_8, label_8, confidence_8)
+        for im_32, des_32, lbl_32, conf_32, pertbs_32, im_16, des_16, lbl_16, conf_16, im_8, des_8, lbl_8, conf_8 in zipped_results:
+            im_32 = tf.image.flip_up_down(im_32)
+            im_16 = tf.image.flip_up_down(im_16)
+            im_8 = tf.image.flip_up_down(im_8)
+    
             fig =plt.figure(figsize=(15,16))
             ax1 = fig.add_subplot(4,4,1)
-            ax1.imshow(pertbs,aspect='auto');
+            ax1.imshow(tf.reshape(pertbs_32, (224,224,3), name=None), aspect='auto')
             ax2 = fig.add_subplot(4,4,2)
-            ax2.imshow(im* 0.5 + 0.5,origin='lower', extent=[-4, 4, -1, 1], aspect=4)
-            plt.title('32 bit -> {} \n {} : {:.2f}% Confidence'.format(des,
-                                                    lbl, conf*100,))
-            """
+            ax2.imshow(im_32* 0.5 + 0.5,origin='lower', extent=[-4, 4, -1, 1], aspect=4)
+            plt.title('32 bit -> {} \n {} : {:.2f}% Confidence'.format(des_32,
+                                                    lbl_32, conf_32*100,))
+            
             ax3 = fig.add_subplot(4,4,3)
-            ax3.imshow(pertbs1,aspect='auto');
-            ax4 = fig.add_subplot(4,4,4)
-            ax4.imshow(im1* 0.5 + 0.5,origin='lower', extent=[-4, 4, -1, 1], aspect=4)
-            plt.title('{}->{} \n {} : {:.2f}% Confidence'.format(self.quant_type,des1,
-                                                    lbl1, conf1*100,))
+            ax3.imshow(im_16* 0.5 + 0.5,origin='lower', extent=[-4, 4, -1, 1], aspect=4)
+            plt.title('16 bit ->->{} \n {} : {:.2f}% Confidence'.format(des_16,
+                                                    lbl_16, conf_16*100,))
+            
+            ax4 = fig.add_subplot(4, 4, 4)
+            ax4.imshow(im_8 * 0.5 + 0.5, origin='lower',
+                       extent=[-4, 4, -1, 1], aspect=4)
+            plt.title('8 bit ->->{} \n {} : {:.2f}% Confidence'.format(des_8,
+                                                                 lbl_8, conf_8*100,))
             
             plt.subplots_adjust(left=0.1,
                         bottom=0.1, 
                         right=0.9, 
                         top=0.9, 
-                        wspace=0.4, 
-            """
+                        wspace=0.4, )
+            
 
 
 
