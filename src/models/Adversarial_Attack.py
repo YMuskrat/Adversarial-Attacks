@@ -22,7 +22,7 @@ class Adversarial_Attack():
         :param display_images: display the image with the pertubation
         """
         ImageHandler = Plotter.ImageHandler()
-        epsilons = [0.01,0.1, 0.15, 0.3]
+        epsilons = [0.01,0.1, 0.15, 0.3,0.5,0.6]
         descriptions = [('Epsilon = {:0.3f}'.format(eps) if eps else 'Input')
                         for eps in epsilons]
         for i, eps in enumerate(epsilons):

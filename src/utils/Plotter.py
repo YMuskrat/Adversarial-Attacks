@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from src.utils.preprocessing import get_imagenet_label
 from src.models.pre_trained import Model
-
+from skimage.transform import resize
 
 class ImageHandler():
     def __init__(self):
@@ -37,9 +37,18 @@ class ImageHandler():
         self.pertubation_list.append(perturbations)
         return self.image_list, self.description_list, self.label_list,self.confidence_list,self.pertubation_list
 
+    def visualize(self, image, image_class, class_confidence):
 
-    def visualize(self,image, image_class, class_confidence):
-        #image,image_class,class_confidence= self.model.predict(r_image,False)
+        for img, lbl, conf in zip(image, image_class, class_confidence):
+            img = tf.image.flip_up_down(img)
+            img=tf.reshape(img, (224,224,3))
+            fig = plt.figure(figsize=(15, 16))
+            ax2 = fig.add_subplot(4, 4, 2)
+            ax2.imshow(img * 0.5 + 0.5, origin='lower',
+                       extent=[-4, 4, -1, 1], aspect=4)
+            plt.title('32 bit -> {} : {:.2f}% Confidence'.format(lbl, conf*100,))
+
+        """#image,image_class,class_confidence= self.model.predict(r_image,False)
         #image1,image_class1,class_confidence1= self.model.predict(r_image,True)
         
         
@@ -57,9 +66,9 @@ class ImageHandler():
                         #right=0.9, 
                         #top=0.9, 
                         #wspace=0.4, 
-                        #hspace=0.4)
+                        #hspace=0.4)"""
 
-        plt.show(astype('uint8'))
+        #plt.show(astype('uint8'))
 
 
     def image_drawer(self,image_32,description_32,label,confidence_32,pertubations_32,

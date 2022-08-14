@@ -3,7 +3,7 @@ import numpy as np
 from tensorflow.keras.applications import resnet50
 import pathlib
 import os
-from src.utils.preprocessing import getImage, get_imagenet_label
+from src.utils.preprocessing import get_imagenet_label
 
 class Model():
     def __init__(self,model):
